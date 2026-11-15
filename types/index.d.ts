@@ -1,8 +1,11 @@
 export type Trigger = 'plan' | 'error' | 'done' | 'other'
 export type AdvisorCall = { id: string; trigger: Trigger; ms: number; at: number }
 export type Live = {
+  /** The most recent calls, newest last; `counts` holds the totals. */
   calls: AdvisorCall[]
-  /** Consecutive failed tool calls with the same tool and message. */
+  /** Calls per trigger since the conversation began. */
+  counts: Record<Trigger, number>
+  /** Consecutive failed main-loop tool calls with the same tool and message. */
   repeats: number
   lastError: string
   /** A file was written or edited in this turn, so the plan is already locked. */
@@ -20,6 +23,8 @@ export type Live = {
   turnWorked: boolean
   /** This turn has called the advisor. */
   turnCalled: boolean
+  /** When the main loop's current turn began, in `$.clock.now()` ms. */
+  turnStartedAt: number
 }
 
 declare module 'claude-code' {
