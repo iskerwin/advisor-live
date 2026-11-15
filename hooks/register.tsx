@@ -25,9 +25,10 @@ const spark = (ms: number[]) => {
 const fresh: Live = {
   calls: [], repeats: 0, lastError: '', hasEdited: false,
   mainBusy: false, mainModel: '', advisorModel: null, launchPid: '',
+  quietTurns: 0, turnWorked: false, turnCalled: false,
 }
 const tick = atom({ plugin: 'advisor-live', key: 'tick' } as const, 0)
-const live = atom({ plugin: 'advisor-live', key: 'live' } as const, fresh, { shape: 'live-4' })
+const live = atom({ plugin: 'advisor-live', key: 'live' } as const, fresh, { shape: 'live-5' })
 
 // A model as people say it: `claude-opus-5-5` and `opus[1m]` read `Opus 5.5`
 // and `Opus`. A name the engine already wrote for people (`Fable 5.2`) stays.
@@ -80,10 +81,17 @@ const classify = (s: Live, endsTurn: boolean): Trigger =>
   s.repeats >= 2 ? 'error' : endsTurn ? 'done' : s.hasEdited ? 'other' : 'plan'
 
 const building = (s: Live) => `${modelName(s.mainModel)} building`
+// An advisor that is set but never called through this many working turns
+// is likely not running: one less capable than the main model never activates,
+// and nothing else says so.
+const QUIET_TURNS = 3
+const isQuiet = (s: Live) => s.advisorModel !== null && s.quietTurns >= QUIET_TURNS
+
 const status = (s: Live) => {
   if (s.advisorModel === null) return `${modelName(s.mainModel)} · advisor off`
-  const last = s.calls[s.calls.length - 1]
   const advisor = `${modelName(s.advisorModel)} advisor`
+  if (isQuiet(s)) return `${advisor} idle · ${s.quietTurns} turns`
+  const last = s.calls[s.calls.length - 1]
   return last ? `${advisor} ×${s.calls.length} · ${LABEL[last.trigger]}` : `${advisor} on call`
 }
 
@@ -124,7 +132,7 @@ const recordAdvisor = async ($: EngineInterface, args: string, before: unknown) 
     advisor = advisorAfter(args, before, await advisorModel())
   }
   if (advisor === undefined) return
-  await update($, live, s => ({ ...s, advisorModel: advisor }))
+  await update($, live, s => ({ ...s, advisorModel: advisor, quietTurns: 0 }))
   $.ui.status(status(await read($, live)))
 }
 
@@ -164,8 +172,11 @@ export const register: Register = on => {
     })
   }
 
+  // A subagent's turns start and complete inside the main one: only the main
+  // loop's own count here.
   on('turn.start', async ($, e, next) => {
-    await update($, live, s => ({ ...s, repeats: 0, lastError: '', hasEdited: false }))
+    if (e.agentId !== undefined) return next(e)
+    await update($, live, s => ({ ...s, repeats: 0, lastError: '', hasEdited: false, turnWorked: false, turnCalled: false }))
     spinner ??= $.clock.every(140, () => void update($, tick, n => n + 1))
     return next(e)
   })
@@ -178,6 +189,7 @@ export const register: Register = on => {
     await update($, live, s => ({
       ...s,
       hasEdited: s.hasEdited || (!failed && EDIT_TOOLS.has(e.tool)),
+      turnWorked: s.turnWorked || e.agentId === undefined,
       repeats: !failed ? 0 : message === s.lastError ? s.repeats + 1 : 1,
       lastError: message,
     }))
@@ -202,6 +214,8 @@ export const register: Register = on => {
           ...s,
           // A call proves the advisor is on even where nothing named it.
           advisorModel: s.advisorModel ?? 'advisor',
+          quietTurns: 0,
+          turnCalled: true,
           calls: [
             ...s.calls,
             ...used.map(u => ({ id: u.id, trigger, ms: (u.endedAt ?? u.startedAt) - u.startedAt, at: now })),
@@ -215,7 +229,12 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
-    await update($, live, s => ({ ...s, mainBusy: false }))
+    if (e.agentId !== undefined) return next(e)
+    await update($, live, s => ({
+      ...s,
+      mainBusy: false,
+      quietTurns: s.turnWorked && !s.turnCalled ? s.quietTurns + 1 : s.quietTurns,
+    }))
     spinner?.cancel()
     spinner = undefined
     $.ui.status(status(await read($, live)))
@@ -234,6 +253,7 @@ export const register: Register = on => {
       return sec < 60 ? `${sec}s ago` : `${Math.round(sec / 60)}m ago`
     }
     const isOff = s.advisorModel === null
+    const quiet = isQuiet(s)
     const isFresh = last !== undefined && now - last.at < 6000
     const flow = isFresh ? ['▾', '▿'][frame % 2] : '│'
     const recent = s.calls.slice(-12)
@@ -246,9 +266,11 @@ export const register: Register = on => {
             <Text color={s.mainBusy ? BLUE : 'gray'}>main · {s.mainBusy ? 'building' : 'idle'}</Text>
           </Box>
           <Text color={isFresh ? VIOLET : 'gray'}>   {flow} consult</Text>
-          <Box borderStyle={isFresh ? 'double' : 'round'} borderColor={isOff ? 'gray' : VIOLET} paddingX={1} justifyContent="space-between">
-            <Text bold color={isOff ? 'gray' : VIOLET}>{last ? '◆' : '◇'} {modelName(s.advisorModel)}</Text>
-            <Text color={isFresh ? VIOLET : 'gray'}>advisor{last && !isOff ? ` · ${ago(last.at)}` : ''}</Text>
+          <Box borderStyle={isFresh ? 'double' : 'round'} borderColor={isOff || quiet ? 'gray' : VIOLET} paddingX={1} justifyContent="space-between">
+            <Text bold color={isOff || quiet ? 'gray' : VIOLET}>{last ? '◆' : '◇'} {modelName(s.advisorModel)}</Text>
+            <Text color={isFresh ? VIOLET : 'gray'}>
+              advisor{quiet ? ' · idle' : last && !isOff ? ` · ${ago(last.at)}` : ''}
+            </Text>
           </Box>
         </Box>
 

@@ -14,6 +14,12 @@ export type Live = {
   advisorModel: string | null
   /** The Claude Code process whose command line `advisorModel` was read from. */
   launchPid: string
+  /** Turns in a row that used tools and never called the advisor. */
+  quietTurns: number
+  /** This turn has used a tool in the main loop. */
+  turnWorked: boolean
+  /** This turn has called the advisor. */
+  turnCalled: boolean
 }
 
 declare module 'claude-code' {

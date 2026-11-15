@@ -7,6 +7,8 @@ A Claude Code mod that shows the advisor's activity live while you work: a statu
 
 Start a session with an advisor, for example `claude --model sonnet --advisor fable`.
 
+An advisor that is set but not called through three turns in a row that used tools reads `idle`, in the pane and the status line. That is usually an advisor less capable than the main model, which never activates.
+
 Switch either model mid-session with the built-in `/model` and `/advisor`; the pane follows. Both save the choice as your default for new sessions.
 
 A mod can't read which advisor the session is using, so the pane works it out: at start from `--advisor` on the launch command line, else the `advisorModel` setting; after `/advisor`, from what it wrote to that setting. A card reading `Advisor` means calls are arriving but nothing named the model.

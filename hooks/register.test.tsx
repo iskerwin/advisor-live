@@ -192,3 +192,55 @@ test('a step names the main model and an advisor call counts', async ($, on) => 
   expect(await ui.find({ type: 'Text', text: /^◆ Fable$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('an advisor never called through working turns reads idle, and a call clears it', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'advisor-live' } }))
+  const statuses: string[] = []
+  on('ui.status', (_, e) => { statuses.push(e.text ?? ''); return { value: undefined } })
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  mock.clock(on, { now: 10_000 })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-opus-5-5' }))
+  on('process.run', () => ({ value: { exitCode: 0, stdout: '42\nclaude --advisor sonnet\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('settings.read', () => ({ value: {} }))
+  on('tool.call', () => ({ result: {} }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: '' }))
+  let callAdvisor = false
+  on('turn.step', async function* (_, e) {
+    return {
+      turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null,
+      serverToolUses: callAdvisor ? [{ id: 'a1', name: 'advisor', input: {}, startedAt: 9_000, endedAt: 10_000 }] : [],
+    }
+  })
+  const turn = async (n: number, { tools = true, agentId }: { tools?: boolean; agentId?: string } = {}) => {
+    const turnId = `t${n}`
+    await $.turn.start({ text: 'go', turnId, agentId })
+    if (tools) await $.tool.call({ tool: 'Bash', command: 'ls', agentId })
+    const step = $.turn.step({ turnId, index: 0, model: 'claude-opus-5-5', messageCount: 1, agentId })
+    while (!(await step.next()).done) {}
+    await $.turn.complete({ turnId, answer: '', durationMs: 1, isAborted: false, reason: 'answer', agentId })
+  }
+  const advisorRight = async () => {
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    await ui.unmount()
+    return texts.find(t => t.startsWith('advisor'))
+  }
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await turn(1)
+  await turn(2, { tools: false })
+  await turn(3)
+  // A subagent's turn neither counts nor resets the main one's.
+  await turn(4, { agentId: 'sub' })
+  expect(await advisorRight()).toBe('advisor')
+  await turn(5)
+  expect(await advisorRight()).toBe('advisor · idle')
+  expect(statuses.at(-1)).toBe('Sonnet advisor idle · 3 turns')
+
+  callAdvisor = true
+  await turn(6)
+  expect(await advisorRight()).not.toBe('advisor · idle')
+  expect(statuses.at(-1)).toBe('Sonnet advisor ×1 · before calling it done')
+})
