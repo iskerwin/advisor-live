@@ -31,6 +31,17 @@ claude plugin install advisor-live --marketplace iskerwin/advisor-live
 
 Answer `y` to add the marketplace, then pick a scope.
 
+## Update
+
+From a shell, fetch the marketplace again, then update the plugin:
+
+```
+claude plugin marketplace update advisor-live
+claude plugin update advisor-live
+```
+
+Restart running sessions to load the new version.
+
 ## License
 
 MIT
