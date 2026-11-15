@@ -1,6 +1,6 @@
 {
   "name": "advisor-live",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Live advisor status in the status line and a side pane",
   "license": "MIT",
   "author": { "name": "iskerwin" },

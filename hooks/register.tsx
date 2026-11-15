@@ -57,8 +57,6 @@ export const advisorAfter = (args: string, before: unknown, after: unknown): str
 export const advisorFromArgv = (command: string): string | undefined =>
   /(?:^|\s)--advisor(?:=|\s+)(\S+)/.exec(command)?.[1]
 
-const SWITCH = { main: 'model', advisor: 'advisor' } as const
-
 const LABEL: Record<Trigger, string> = {
   plan: 'before the plan locks',
   error: 'same error twice',
@@ -113,8 +111,6 @@ const startingAdvisor = async ($: EngineInterface, s: Live): Promise<Pick<Live, 
   return { advisorModel: typeof set === 'string' && set !== '' ? set : null, launchPid }
 }
 
-type Command = (typeof SWITCH)[keyof typeof SWITCH]
-
 // How long `/advisor`'s write to settings may take to read back. A refusal
 // writes nothing, so it waits this long and changes nothing.
 const SETTLE_MS = 2000
@@ -132,25 +128,16 @@ const recordAdvisor = async ($: EngineInterface, args: string, before: unknown) 
   $.ui.status(status(await read($, live)))
 }
 
-// Runs `/model` or `/advisor` (`run`: the engine's chain or `$.command.run`),
-// then records what the session has: the main model as `/model` shows it, and
-// the advisor by what the run did to its setting, read in the background so
-// the command is not held while it settles.
-const switching = async <R,>($: EngineInterface, command: Command, args: string, run: () => Promise<R>): Promise<R> => {
-  const before = await $.settings.read({ key: 'advisorModel' })
-  const ran = await run()
-  const mainModel = await $.session.model()
-  await update($, live, s => ({ ...s, mainModel }))
-  $.ui.status(status(await read($, live)))
-  if (command === 'advisor') void recordAdvisor($, args, before).catch(() => {})
-  return ran
-}
+// After `/model` or `/advisor`: the main model as `/model` shows it, and the
+// advisor by what `/advisor` did to its setting, read in the background so the
+// command is not held while it settles.
+const SWITCHES = ['model', 'advisor'] as const
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'advisor-live',
-      description: 'Open the advisor pane; `main <model>` or `advisor <model|off>` switches one',
+      description: 'Open the live advisor pane',
     })
     const advisor = await startingAdvisor($, await read($, live))
     const mainModel = await $.session.model()
@@ -160,34 +147,21 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'advisor-live' }, async ($, e) => {
-    const [role, ...rest] = e.args.trim().split(/\s+/)
-    const model = rest.join(' ')
-    if (!role) {
-      await $.ui.open(PANE_ARGS)
-      return { text: 'Advisor pane opened.' }
-    }
-    if (role !== 'main' && role !== 'advisor') {
-      return { text: 'Usage: /advisor-live [main <model> | advisor <model|off>]' }
-    }
-    const command = SWITCH[role]
-    if (!model) return { text: `Usage: /advisor-live ${role} <model${role === 'advisor' ? '|off' : ''}>` }
-    if (!(await $.command.list()).some(c => c.name === command)) {
-      return { text: `/${command} is not available in this session.` }
-    }
-    // A command hook can't run another command: it would wait on the run this
-    // hook holds. So it goes from the clock, once this one has answered, and
-    // the built-in's own output says whether the switch took. This plugin's
-    // hooks on `/model` and `/advisor` do not see a run it made, so it records
-    // the result itself.
-    void $.clock.sleep(10)
-      .then(() => switching($, command, model, () => $.command.run({ command, args: model })))
-      .catch(err => $.ui.toast(`/${command} ${model}: ${String(err)}`))
-    return { text: `Running /${command} ${model}` }
+  on('command.run', { command: 'advisor-live' }, async $ => {
+    await $.ui.open(PANE_ARGS)
+    return { text: 'Advisor pane opened.' }
   })
 
-  for (const command of Object.values(SWITCH)) {
-    on('command.run', { command }, ($, e, next) => switching($, command, e.args, () => next(e)))
+  for (const command of SWITCHES) {
+    on('command.run', { command }, async ($, e, next) => {
+      const before = await $.settings.read({ key: 'advisorModel' })
+      const ran = await next(e)
+      const mainModel = await $.session.model()
+      await update($, live, s => ({ ...s, mainModel }))
+      $.ui.status(status(await read($, live)))
+      if (command === 'advisor') void recordAdvisor($, e.args, before).catch(() => {})
+      return ran
+    })
   }
 
   on('turn.start', async ($, e, next) => {

@@ -97,45 +97,6 @@ test('the pane names both models and follows a switch', async ($, on) => {
   await ui.unmount()
 })
 
-test('/advisor-live switches through the built-ins and the pane follows', async ($, on) => {
-  let main = 'claude-opus-5-5'
-  on('command.register', () => ({ value: { command: 'advisor-live' } }))
-  on('command.list', () => ({ value: [
-    { name: 'model', description: '', source: 'builtin' },
-    { name: 'advisor', description: '', source: 'builtin' },
-  ] }))
-  on('ui.status', () => ({ value: undefined }))
-  const clock = mock.clock(on)
-  const toasts: string[] = []
-  on('ui.toast', (_, e) => { toasts.push(JSON.stringify(e)); return { value: undefined } })
-  on('ui.open', () => ({ value: { isPlaced: true } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('session.model', () => ({ value: main }))
-  on('process.run', () => ({ value: { exitCode: 0, stdout: '42\nclaude --advisor opus\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
-  let advisorModel = 'sonnet'
-  on('settings.read', () => ({ value: { advisorModel } }))
-  on('command.run', { command: 'advisor' }, (_, e) => {
-    advisorModel = e.args
-    return {}
-  })
-  on('command.run', { command: 'model' }, () => {
-    main = 'claude-sonnet-5-5'
-    return {}
-  })
-
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  await $.command.run({ command: 'advisor-live', args: 'advisor fable', ...TYPED })
-  await clock.advance(50)
-  await $.command.run({ command: 'advisor-live', args: 'main sonnet', ...TYPED })
-  await clock.advance(50)
-  expect(toasts).toEqual([])
-
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /Sonnet 5\.5/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^◇ Fable$/ })).toBeDefined()
-  await ui.unmount()
-})
-
 test("the advisor follows a write settings read back late, and a refusal changes nothing", async ($, on) => {
   on('command.register', () => ({ value: { command: 'advisor-live' } }))
   on('ui.status', () => ({ value: undefined }))

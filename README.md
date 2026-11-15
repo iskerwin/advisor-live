@@ -7,7 +7,7 @@ A Claude Code mod that shows the advisor's activity live while you work: a statu
 
 Start a session with an advisor, for example `claude --model sonnet --advisor fable`.
 
-Switch either model mid-session with `/advisor-live main <model>` or `/advisor-live advisor <model|off>`. These run the built-in `/model` and `/advisor`, so their output says whether the switch took; typing `/model` or `/advisor` yourself updates the pane too. Both built-ins also save the choice as your default for new sessions.
+Switch either model mid-session with the built-in `/model` and `/advisor`; the pane follows. Both save the choice as your default for new sessions.
 
 A mod can't read which advisor the session is using, so the pane works it out: at start from `--advisor` on the launch command line, else the `advisorModel` setting; after `/advisor`, from what it wrote to that setting. A card reading `Advisor` means calls are arriving but nothing named the model.
 
