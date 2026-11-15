@@ -7,7 +7,7 @@ A Claude Code mod that shows the advisor's activity live while you work: a statu
 
 Start a session with an advisor, for example `claude --model sonnet --advisor fable`.
 
-The advisor runs inside the API request, so the mod sees a call only after it finishes. There is no "consulting" state while it runs. The moment is inferred: two failed Bash calls in a row count as "same error twice", a step that ends the turn with no tool calls counts as "before calling it done", and anything else counts as "before the plan locks".
+The advisor runs inside the API request, so the mod sees a call only after it finishes. There is no "consulting" state while it runs. The moment each call counts under is inferred from the turn, not reported by the advisor: the same tool failing twice in a row with the same message is "same error twice", a step that ends the turn is "before calling it done", a call before any file was written is "before the plan locks", and a call in between shows as a check-in in the recent list.
 
 ## Install
 
