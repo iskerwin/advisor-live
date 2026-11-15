@@ -1,0 +1,5 @@
+{
+  "name": "advisor-live",
+  "owner": { "name": "iskerwin" },
+  "plugins": [{ "name": "advisor-live", "source": "./" }]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "advisor-live",
+  "version": "0.1.0",
+  "description": "Live advisor status in the status line and a side pane",
+  "license": "MIT",
+  "author": { "name": "iskerwin" },
+  "types": "./types/index.d.ts"
+}
