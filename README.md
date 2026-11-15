@@ -7,7 +7,22 @@ A Claude Code mod that shows the advisor's activity live while you work: a statu
 
 Start a session with an advisor, for example `claude --model sonnet --advisor fable`.
 
-An advisor that is set but not called through three turns in a row that used tools reads `idle`, in the pane and the status line. That is usually an advisor less capable than the main model, which never activates. Switching either model starts that count over.
+## The pane
+
+<img src="assets/pane-idle.png" width="280" align="right" alt="The advisor-live pane: Opus 5.5 linked to a Fable advisor that reads idle after 5 turns, with empty moments meters and no calls">
+
+From the top:
+
+- **link**: the main model on the left, the advisor on the right. Below them, the main model's state (`○ idle` between turns, a spinner and the running time while it builds) and the advisor's.
+- **latency**: shown once there are calls. A braille graph of recent advisor calls, with the slowest and the average.
+- **moments**: how many calls fell under each moment the advisor is meant to wake up, as a meter, a share and a count.
+- **calls**: one row per call, newest first: the moment, how long it took and how long ago.
+
+### Idle advisor
+
+The screenshot shows an advisor that is set but never called. After three turns in a row that used tools with no advisor call, the advisor reads `idle · N turns`, in the pane and the status line, and the count keeps going until a call arrives. This usually means the advisor is less capable than the main model, here Fable under Opus 5.5, and so never activates. Pick a stronger advisor, or drop it. Switching either model starts the count over.
+
+<br clear="right">
 
 Switch either model mid-session with the built-in `/model` and `/advisor`; the pane follows. Both save the choice as your default for new sessions.
 
