@@ -7,7 +7,13 @@ export type Live = {
   lastError: string
   /** A file was written or edited in this turn, so the plan is already locked. */
   hasEdited: boolean
-  sonnetBusy: boolean
+  mainBusy: boolean
+  /** The main loop's model as the engine names it: an alias or a full id. */
+  mainModel: string
+  /** The advisor's model, an id or the name `/advisor` printed; null when off or unknown. */
+  advisorModel: string | null
+  /** The Claude Code process whose command line `advisorModel` was read from. */
+  launchPid: string
 }
 
 declare module 'claude-code' {
