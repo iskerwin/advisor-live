@@ -9,18 +9,18 @@ Start a session with an advisor, for example `claude --model sonnet --advisor fa
 
 ## The pane
 
-<img src="assets/pane-idle.png" width="280" align="right" alt="The advisor-live pane: Opus 5.5 linked to a Fable advisor that reads idle after 5 turns, with empty moments meters and no calls">
+<img src="assets/pane.png" width="280" align="right" alt="The advisor-live pane after five calls from an Opus advisor to Sonnet 5.5: a latency graph, the four moments metered, and the calls listed newest first">
 
-From the top:
+From the top, here after five calls from an Opus advisor working with Sonnet 5.5:
 
-- **link**: the main model on the left, the advisor on the right. Below them, the main model's state (`○ idle` between turns, a spinner and the running time while it builds) and the advisor's.
+- **link**: the main model on the left, the advisor on the right. Below them, the main model's state (`○ idle` between turns, a spinner and the running time while it builds) and how long ago the advisor last answered.
 - **latency**: shown once there are calls. A braille graph of recent advisor calls, with the slowest and the average.
-- **moments**: how many calls fell under each moment the advisor is meant to wake up, as a meter, a share and a count.
+- **moments**: how many calls fell under each moment the advisor is meant to wake up, as a meter, a share and a count. A `check` row joins them once a call lands in between.
 - **calls**: one row per call, newest first: the moment, how long it took and how long ago.
 
 ### Idle advisor
 
-The screenshot shows an advisor that is set but never called. After three turns in a row that used tools with no advisor call, the advisor reads `idle · N turns`, in the pane and the status line, and the count keeps going until a call arrives. This usually means the advisor is less capable than the main model, here Fable under Opus 5.5, and so never activates. Pick a stronger advisor, or drop it. Switching either model starts the count over.
+An advisor that is set but not called through three turns in a row that used tools reads `idle · N turns`, in the pane's link box and the status line, and the count keeps going until a call arrives. This usually means the advisor is less capable than the main model, for example Fable under Opus 5.5, and so never activates. Pick a stronger advisor, or drop it. Switching either model starts the count over.
 
 <br clear="right">
 
